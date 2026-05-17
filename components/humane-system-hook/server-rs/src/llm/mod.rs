@@ -9,6 +9,9 @@ use tracing::{error, info};
 
 use crate::config::LlmConfig;
 
+mod koa;
+use koa::KoaClient;
+
 /// Convert a raw LLM provider error into a friendly, speakable sentence.
 fn friendly_error_message(e: &impl Display) -> String {
     let raw = e.to_string().to_lowercase();
@@ -78,6 +81,10 @@ pub enum LlmAgent {
     Anthropic(rig::agent::Agent<providers::anthropic::completion::CompletionModel>),
     /// OpenAI Chat Completions API — also used for openai-compatible providers.
     OpenAi(rig::agent::Agent<providers::openai::CompletionModel>),
+    /// Koa AI server — delegates the full turn to an external Koa HTTP service.
+    /// `system_prompt` is intentionally not forwarded (Koa owns its own
+    /// orchestrator prompts).
+    Koa(KoaClient),
 }
 
 impl LlmAgent {
@@ -153,8 +160,18 @@ impl LlmAgent {
                 info!("OpenAI agent ready (model={}, custom_base={})", config.model, config.base_url.is_some());
                 Ok(LlmAgent::OpenAi(agent))
             }
+            "koa" => {
+                let base_url = config.base_url.clone().ok_or(
+                    "Koa base_url not set; set llm.base_url in config.toml (e.g. \"http://192.168.1.10:8000\")",
+                )?;
+                // Koa accepts unauthenticated requests in dev mode, so api_key is optional.
+                let api_key = config.resolve_api_key();
+                let client = KoaClient::new(base_url, api_key, config.koa_tenant_id.clone());
+                info!("Koa agent ready");
+                Ok(LlmAgent::Koa(client))
+            }
             other => {
-                Err(format!("unknown LLM provider: '{}' (valid: echo, gemini, anthropic, openai, openai-compatible)", other).into())
+                Err(format!("unknown LLM provider: '{}' (valid: echo, gemini, anthropic, openai, openai-compatible, koa)", other).into())
             }
         }
     }
@@ -182,6 +199,7 @@ impl LlmAgent {
                 error!(error = %e, "OpenAI chat failed");
                 friendly_error_message(&e)
             }),
+            LlmAgent::Koa(client) => client.chat(utterance, &history, None).await,
         }
     }
 
@@ -203,6 +221,7 @@ impl LlmAgent {
                 error!(error = %e, "OpenAI prompt failed");
                 friendly_error_message(&e)
             }),
+            LlmAgent::Koa(client) => client.chat(utterance, &[], None).await,
         }
     }
 
@@ -240,6 +259,7 @@ impl LlmAgent {
                 error!(error = %e, "OpenAI vision prompt failed");
                 friendly_error_message(&e)
             }),
+            LlmAgent::Koa(client) => client.chat(question, &[], Some(image_base64)).await,
         }
     }
 }

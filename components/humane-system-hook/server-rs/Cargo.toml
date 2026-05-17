@@ -8,6 +8,10 @@ description = "Standalone gRPC server for Humane AI Pin"
 name = "humane-server"
 path = "src/main.rs"
 
+# Keep this crate out of the surrounding pinitd workspace at the repo root.
+# server-rs has its own build flow and its own Cargo.lock.
+[workspace]
+
 [dependencies]
 tonic = "0.14"
 tonic-prost = "0.14"

@@ -19,24 +19,31 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LlmConfig {
-    /// Provider name: "gemini", "anthropic", "openai", "openai-compatible", "echo"
+    /// Provider name: "gemini", "anthropic", "openai", "openai-compatible",
+    /// "koa", "echo".
     #[serde(default = "default_provider")]
     pub provider: String,
 
-    /// Model ID for the chosen provider (e.g. "gemini-2.5-flash")
+    /// Model ID for the chosen provider (e.g. "gemini-2.5-flash").
+    /// Unused for "koa" (Koa picks its own model per request).
     #[serde(default = "default_model")]
     pub model: String,
 
     /// API key — overrides the corresponding env var if set.
     pub api_key: Option<String>,
 
-    /// Base URL — only used for "openai-compatible" provider.
+    /// Base URL — used for "openai-compatible" and "koa" providers.
+    /// For Koa this is the server root, e.g. `http://192.168.1.10:8000`.
     pub base_url: Option<String>,
 
     /// When provider == "gemini", enable Google's built-in Search grounding tool.
     /// No effect for other providers.
     #[serde(default)]
     pub gemini_google_search: bool,
+
+    /// Tenant identifier sent to Koa's `/chat` endpoint. Defaults to "pin"
+    /// inside the Koa client when unset. Only used when provider == "koa".
+    pub koa_tenant_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -154,6 +161,7 @@ impl Default for LlmConfig {
             api_key: None,
             base_url: None,
             gemini_google_search: false,
+            koa_tenant_id: None,
         }
     }
 }
@@ -227,6 +235,7 @@ impl LlmConfig {
             "gemini" => "GEMINI_API_KEY",
             "anthropic" => "ANTHROPIC_API_KEY",
             "openai" | "openai-compatible" => "OPENAI_API_KEY",
+            "koa" => "KOA_API_KEY",
             _ => return None,
         };
 

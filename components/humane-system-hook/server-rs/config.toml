@@ -1,9 +1,21 @@
 [llm]
-provider = "gemini"          # "gemini", "anthropic", "openai", "openai-compatible", "echo"
-model = "gemini-2.5-flash"   # model ID for the provider
+provider = "gemini"          # "gemini", "anthropic", "openai", "openai-compatible", "koa", "echo"
+model = "gemini-2.5-flash"   # model ID for the provider (ignored for "koa")
 # api_key = "..."            # optional, overrides env var
-# base_url = "..."           # optional, for openai-compatible providers
+# base_url = "..."           # optional, for openai-compatible and koa providers
 # gemini_google_search = true # enable built-in Google Search grounding (Gemini only)
+
+# ── Koa provider example ──────────────────────────────────────────────
+# Delegates the entire chat turn to an external Koa AI server
+# (https://github.com/xiaoyu-work/koa). Koa runs its own ReAct orchestrator
+# with ~30 specialized agents (email, calendar, smart home, ...).
+#
+# [llm]
+# provider = "koa"
+# base_url = "http://192.168.1.10:8000"  # Koa server root (no trailing /chat)
+# koa_tenant_id = "pin"                  # optional, defaults to "pin"
+# # API key via KOA_API_KEY env var, or set llm.api_key here.
+# # If Koa is in dev mode (no KOA_API_KEY set), api_key is optional.
 
 [server]
 port = 9090
