@@ -1,0 +1,5 @@
+[Service]
+Name=adbd-service
+Uid=2000
+Autostart=true
+Exec=$(pm path com.penumbraos.adbd | sed -E 's#^package:(.*)/base\\.apk$#\\1#')/lib/arm64/libadbd.so;

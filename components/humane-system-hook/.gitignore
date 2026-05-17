@@ -1,0 +1,25 @@
+*.iml
+.gradle
+.ci/
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+**/build
+**/target
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.kotlin
+
+# Python
+__pycache__/
+*.pyc
+server-rs/data/
+server-rs/media/
+**/jniLibs/

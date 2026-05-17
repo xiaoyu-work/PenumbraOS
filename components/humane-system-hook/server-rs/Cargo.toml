@@ -1,0 +1,49 @@
+[package]
+name = "humane-server"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone gRPC server for Humane AI Pin"
+
+[[bin]]
+name = "humane-server"
+path = "src/main.rs"
+
+[dependencies]
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+uuid = { version = "1", features = ["v4"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-stream = "0.3"
+rig-core = { version = "0.34", default-features = false, features = ["reqwest", "native-tls"] }
+toml = "0.8"
+toml_edit = "0.22"
+futures = "0.3"
+base64 = "0.22"
+rcgen = "0.14"
+aes-gcm = "0.10"
+rand = "0.10"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+mime_guess = "2"
+tower = { version = "0.5", features = ["util"] }
+http = "1"
+http-body = "1"
+http-body-util = "0.1"
+axum = "0.8"
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "native-tls"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+dotenvy = "0.15"
+
+[target.'cfg(target_os = "android")'.dependencies]
+# Android requires openssl to be embedded
+openssl = { version = "*", features = ["vendored"] }
+
+[build-dependencies]
+tonic-prost-build = "0.14"

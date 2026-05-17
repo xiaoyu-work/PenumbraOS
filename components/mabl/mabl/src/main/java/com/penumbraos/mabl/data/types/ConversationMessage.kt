@@ -1,0 +1,37 @@
+package com.penumbraos.mabl.data.types
+
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
+
+@Serializable
+@Entity(
+    tableName = "conversation_messages",
+    indices = [
+        Index(value = ["conversationId"]),
+        Index(value = ["conversationId", "type", "timestamp"])
+    ],
+    foreignKeys = [ForeignKey(
+        entity = Conversation::class,
+        parentColumns = ["id"],
+        childColumns = ["conversationId"],
+        onDelete = ForeignKey.Companion.CASCADE
+    )]
+)
+data class ConversationMessage(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val conversationId: String,
+    /**
+     * "user", "assistant", "tool"
+     */
+    val type: String,
+    val content: String,
+    /**
+     * JSON serialized tool calls
+     */
+    val toolCalls: String? = null,
+    val toolCallId: String? = null,
+    val timestamp: Long = System.currentTimeMillis()
+)

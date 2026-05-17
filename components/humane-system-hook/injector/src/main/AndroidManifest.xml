@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:sharedUserId="android.uid.system"
+    tools:ignore="Deprecated">
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:allowBackup="false"
+        android:label="PenumbraHookInjector"
+        android:process="system">
+
+        <!-- Auto-inject at boot. Priority 999 ensures we run before Humane's
+             own boot receivers (GrandCentralBootReceiver, etc.) so PMS is
+             mutated before ironman's process is ever forked. -->
+        <receiver
+            android:name=".BootInjectionReceiver"
+            android:process="system"
+            android:directBootAware="true"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Manual injection trigger (kept for development/debugging) -->
+        <receiver
+            android:name=".InjectReceiver"
+            android:process="system"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.penumbraos.hook.INJECT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ADB WiFi bridge: manual trigger only.
+             Restarts adbd with an abstract unix socket listener bridged to TCP :5555 -->
+        <receiver
+            android:name=".AdbBridgeReceiver"
+            android:process="system"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.penumbraos.hook.ADB_BRIDGE" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>

@@ -1,0 +1,186 @@
+package com.penumbraos.bridge.external
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.DeadObjectException
+import android.os.RemoteException
+import android.os.ServiceManager
+import android.util.Log
+import com.penumbraos.bridge.IBridge
+import dalvik.system.DexClassLoader
+import kotlinx.coroutines.delay
+
+@SuppressLint("UnspecifiedRegisterReceiverFlag")
+suspend fun connectToBridge(tag: String, context: Context): IBridge {
+    try {
+        return IBridge.Stub.asInterface(ServiceManager.getService("nfc"))
+    } catch (e: Exception) {
+        // Bridge is not yet running
+    }
+
+//        val channel = Channel<Unit>()
+
+//        Log.i(TAG, "Waiting for bridge-core to register")
+//        registerReceiver(context, object : BroadcastReceiver() {
+//            override fun onReceive(
+//                context: Context?,
+//                intent: Intent?
+//            ) {
+//                if (intent?.action == BRIDGE_SERVICE_REGISTERED) {
+//                    channel.trySendBlocking(Unit)
+//                }
+//            }
+//        }, IntentFilter(BRIDGE_SERVICE_REGISTERED))
+    var iterations = 0
+    while (true) {
+        val bridge = IBridge.Stub.asInterface(ServiceManager.getService("nfc"))
+        if (bridge != null) {
+            Log.i(tag, "bridge-core registration signal received")
+            return bridge
+        }
+        delay(5000)
+        if (iterations % 10 == 0) {
+            Log.i(tag, "Waiting for bridge-core to register")
+        }
+        iterations += 1
+    }
+
+//        channel.receive()
+//        Log.i(TAG, "bridge-core registration signal received")
+//        return IBridge.Stub.asInterface(ServiceManager.getService("nfc"))
+}
+
+suspend fun waitForBridgeSystem(tag: String, bridge: IBridge) {
+    var iterations = 0
+    while (true) {
+        val provider = bridge.httpProvider
+        if (provider != null) {
+            Log.i(tag, "bridge-system registration signal received")
+            return
+        }
+        delay(5000)
+        if (iterations % 10 == 0) {
+            Log.i(tag, "Waiting for bridge-system to register")
+        }
+        iterations += 1
+    }
+}
+
+suspend fun waitForBridgeShell(tag: String, bridge: IBridge) {
+    var iterations = 0
+    while (true) {
+        val provider = bridge.shellProvider
+        if (provider != null) {
+            Log.i(tag, "bridge-shell registration signal received")
+            return
+        }
+        delay(5000)
+        if (iterations % 10 == 0) {
+            Log.i(tag, "Waiting for bridge-shell to register")
+        }
+        iterations += 1
+    }
+}
+
+// TODO: Figure this out and add to MockContext
+//    @SuppressLint("PrivateApi")
+//    fun registerReceiver(
+//        context: Context,
+//        receiver: BroadcastReceiver?,
+//        filter: IntentFilter
+//    ): Intent? {
+//        if (receiver == null) {
+//            return null
+//        }
+//
+//        val activityManager = MockActivityManager.getOriginalIActivityManagerProxy()
+//
+//        if (activityManager == null) {
+//            Log.e(
+//                "T",
+//                "Activity manager is null. Cannot register receiver"
+//            )
+//            return null
+//        }
+//
+//        // Create IIntentReceiver wrapper for our BroadcastReceiver
+//        val intentReceiver = object : IIntentReceiver.Stub() {
+//            override fun performReceive(
+//                intent: Intent,
+//                resultCode: Int,
+//                data: String?,
+//                extras: android.os.Bundle?,
+//                ordered: Boolean,
+//                sticky: Boolean,
+//                sendingUser: Int
+//            ) {
+//                Log.w("Hello", "Received intent: $intent")
+//                val handler = Handler(Looper.getMainLooper())
+//                handler.post {
+//                    receiver.onReceive(context, intent)
+//                }
+//            }
+//        }
+//
+//        val registerReceiverMethod = activityManager::class.java.getDeclaredMethod(
+//            "registerReceiver",
+//            Class.forName("android.app.IApplicationThread"),  // caller
+//            String::class.java,                               // callerPackage
+//            Class.forName("android.content.IIntentReceiver"), // receiver
+//            IntentFilter::class.java,                         // filter
+//            String::class.java,                               // requiredPermission
+//            Int::class.java,                                  // userId
+//            Int::class.java                                   // flags
+//        )
+//        registerReceiverMethod.isAccessible = true
+//
+//        val intent = registerReceiverMethod.invoke(
+//            activityManager,
+//            null,             // caller
+//            "android",        // callerPackage
+//            intentReceiver,   // receiver
+//            filter,           // filter
+//            null,             // requiredPermission
+//            -1,               // userId (UserHandle.USER_ALL)
+//            0                 // flags
+//        ) as? Intent
+//
+//        Log.w("Hello", "Registered receiver: $intent")
+//
+//        return intent
+//    }
+
+fun getApkClassLoader(context: Context, packageName: String): DexClassLoader {
+    val packageManager = context.packageManager
+    val apkPath: String
+    try {
+        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+        apkPath = packageInfo.applicationInfo!!.sourceDir
+    } catch (e: PackageManager.NameNotFoundException) {
+        throw Error("Could not look up $packageName for class extraction", e)
+    }
+
+    return DexClassLoader(apkPath, null, null, null)
+}
+
+inline fun safeCallback(
+    tag: String,
+    operation: () -> Unit,
+    onDeadObject: () -> Unit = {}
+): Boolean {
+    return try {
+        operation()
+        true
+    } catch (e: DeadObjectException) {
+        Log.w(tag, "Dead callback detected", e)
+        onDeadObject()
+        false
+    } catch (e: RemoteException) {
+        Log.w(tag, "RemoteException in callback", e)
+        false
+    } catch (e: Exception) {
+        Log.e(tag, "Exception in callback", e)
+        false
+    }
+}

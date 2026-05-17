@@ -1,0 +1,344 @@
+// Reconstructed from decompiled protobuf-lite Java classes.
+// Field numbers extracted from *_FIELD_NUMBER constants.
+// Only messages needed for AIBusService/Understand are fully defined;
+// referenced-but-unused types are stubbed as empty messages.
+
+syntax = "proto3";
+
+package humane.aibus;
+
+import "google/protobuf/timestamp.proto";
+import "humane/common/encryption.proto";
+
+option java_multiple_files = true;
+
+// ---- Enums ----
+
+enum SynapseUser {
+  SYSTEM    = 0;
+  USER      = 1;
+  ASSISTANT = 2;
+}
+
+enum SynapseSource {
+  DEVICE = 0;
+  SERVER = 1;
+}
+
+// ---- Core messages for Understand RPC ----
+
+message SynapseActionContent {
+  string thought = 1;
+  string action = 2;
+  string input = 3;
+  bytes device_payload = 4;
+  SynapseSource source = 5;
+}
+
+message SynapseEndContent {
+  // empty sentinel
+}
+
+message SynapseUserRequestContent {
+  enum VisionRequested {
+    UNSPECIFIED = 0;
+    VISION      = 1;
+    NO_VISION   = 2;
+  }
+
+  string request = 1;
+  double transcription_confidence = 2;
+  repeated string immutable_tokens = 3;
+  bool is_verbal = 4;
+  VisionRequested vision_requested = 5;
+  // Audio audio_bytes = 6;  -- omitted, not needed for PoC
+  string repaired_request = 7;
+  bytes image_data = 8;
+}
+
+message SynapseChatTurn {
+  SynapseUser user = 1;
+  oneof content {
+    SynapseUserRequestContent user_request = 2;
+    SynapseTaoContent tao = 3;
+    SynapseActionContent action = 5;
+    SynapseObservationContent observation = 6;
+    SynapseInterpretationContent interpretation = 7;
+    SynapseEndContent end = 10;
+    SynapseMessageContent message = 11;
+    SynapseSpeechContent speech = 12;
+  }
+  google.protobuf.Timestamp timestamp = 4;
+  string identifier = 8;
+  string parent_identifier = 9;
+}
+
+// ---- Request / Response ----
+
+message SynapseUnderstandingRequest {
+  string utterance = 1;
+  repeated string previous_answers = 2;
+  SynapseDeviceContext device_context = 3;
+  repeated SynapseActionDefinition action_definitions = 4;
+  repeated Session example_sessions = 5;
+  bool single_shot = 6;
+  bool send_actions_and_observations_separately = 7;
+  repeated string excluded_tools = 8;
+  ToolSetVersion tool_set_version = 9;
+  Location location = 10;
+  SpeechConfig speech_config = 11;
+}
+
+message SynapseUnderstandingResponse {
+  string response = 1;
+  bool is_final = 2;
+  oneof body {
+    SynapseAnswer answer = 3;
+    SynapseNoAnswerExplanation no_answer_explanation = 4;
+    SynapseFailure failure = 5;
+    SynapseHeartbeat heartbeat = 6;
+    SynapseInterpretation interpretation = 7;
+    SynapseChatTurn turn = 8;
+    SynapseDisambiguation disambiguation = 9;
+  }
+}
+
+// ---- Stub types (field numbers from decompiled source) ----
+
+message SynapseDeviceContext {
+  repeated SynapsePreviousAction previous_actions = 1;
+  google.protobuf.Timestamp current_timestamp = 2;
+  repeated SynapseChatTurn turns = 3;
+  SynapseUserSituation situation = 4;
+  bool is_locked = 5;
+  string reverse_geocoded_location = 6;
+}
+
+message SynapseUserSituation {}
+message SynapsePreviousAction {}
+message SynapseActionDefinition {}
+message Session {}
+message ToolSetVersion {
+  string set_name = 1;
+  int32 version = 2;
+}
+message Location {
+  double latitude = 1;
+  double longitude = 2;
+}
+message SpeechConfig {}
+
+message SynapseAnswer {}
+message SynapseNoAnswerExplanation {}
+message SynapseFailure {}
+message SynapseHeartbeat {}
+message SynapseInterpretation {}
+message SynapseDisambiguation {}
+message SynapseTaoContent {
+  string thought = 1;
+  string action = 2;
+  string observation = 3;
+}
+
+message SynapseObservationContent {
+  string observation = 1;
+  bool is_final = 2;
+  string action_name = 3;
+  SynapseSource source = 4;
+}
+
+message SynapseInterpretationContent {
+  string thought = 1;
+  string interpretation = 2;
+}
+
+message SynapseMessageContent {
+  string content = 1;
+}
+
+message SynapseSpeechContent {
+  // Audio speech = 1;  -- omitted, Audio type not defined
+  string speech_transcription = 2;
+  // SpeechSource source = 3;  -- omitted, enum not defined
+}
+
+// ---- AnalyzeImage messages ----
+
+enum ImageHint {
+  IMAGE_HINT_UNKNOWN = 0;
+  IMAGE_HINT_FOOD    = 1;
+  IMAGE_HINT_GEMINI  = 2;
+  IMAGE_HINT_GPT4V   = 3;
+}
+
+message AnalyzeImageRequest {
+  string base64_encoded_image = 1 [deprecated = true];
+  string request = 2;              // question text ("What is this?")
+  bytes image_data = 3;            // raw JPEG bytes
+  repeated ImageHint image_hints = 4;
+  string utterance = 5;            // raw transcription
+  map<string, string> if_then = 6; // SDK action mappings (ignored)
+}
+
+message AnalyzeImageResponse {
+  string observation = 1 [deprecated = true];
+  NestedAnalyzeImageResponse nested_analyze_image_response = 2;
+}
+
+message NestedAnalyzeImageResponse {
+  oneof response_one_of {
+    GenericImageResponse generic_image_response = 1;
+    FoodImageResponse food_image_response = 2;  // deprecated on device
+  }
+}
+
+message GenericImageResponse {
+  string observation = 1;  // text description of the image
+}
+
+message FoodImageResponse {
+  // deprecated — device treats this as an error.
+  // FoodBoundingBox messages omitted; not needed.
+}
+
+// ---- Weather messages ----
+
+message WeatherResponse {
+  bool has_precipitation = 1;
+  string precipitation_type = 2;
+  double temperature_fahrenheit = 3;
+  double temperature_celsius = 4;
+  string weather_text = 5;
+  int32 weather_icon = 6;
+  int32 u_v_index = 7;
+}
+
+message EncryptedWeatherRequest {
+  // Field 1 intentionally absent (matches APK definition).
+  humane.common.encryption.EncryptedData location = 2;
+}
+
+message EncryptedWeatherResponse {
+  // Field 1 intentionally absent (matches APK definition).
+  humane.common.encryption.EncryptedData response = 2;
+}
+
+// ---- NearbySearch messages ----
+
+enum NearbySearchResultStatus {
+  NEARBY_SEARCH_RESULT_STATUS_UNSPECIFIED    = 0;
+  NEARBY_SEARCH_RESULT_STATUS_SUCCESS        = 1;
+  NEARBY_SEARCH_RESULT_STATUS_INTERNAL_ERROR = 2;
+  NEARBY_SEARCH_RESULT_STATUS_BAD_REQUEST    = 3;
+}
+
+message NearbyPlace {
+  string name                 = 1;
+  string formatted_address    = 2;
+  repeated string place_types = 3;
+  string place_id             = 4;
+  string phone_number         = 5;
+  string place_description    = 6;
+  string description_language = 7;
+  string website_url          = 8;
+  float rating                = 9;
+  int32 user_ratings_total    = 10;
+  Location location           = 11;
+  bool open_now               = 12;
+}
+
+message NearbySearchRequest {
+  string text_query       = 1;
+  Location location       = 2;
+  double radius_accuracy  = 3;
+}
+
+message NearbySearchResponse {
+  repeated NearbyPlace nearby_places        = 1;
+  optional NearbySearchResultStatus status  = 2;
+}
+
+message EncryptedNearbySearchRequest {
+  humane.common.encryption.EncryptedData request = 1;
+}
+
+message EncryptedNearbySearchResponse {
+  humane.common.encryption.EncryptedData response = 1;
+}
+
+// ---- GeoLocate messages ----
+
+message CellTower {
+  int32  cell_id             = 1;
+  int32  new_radio_cell_id   = 2;
+  int32  location_area_code  = 3;
+  int32  mobile_country_code = 4;
+  int32  mobile_network_code = 5;
+  int32  age                 = 6;
+  double signal_strength     = 7;
+  double timing_advance      = 8;
+}
+
+message WifiAccessPoint {
+  string mac_address           = 1;
+  double signal_strength       = 2;
+  int32  age                   = 3;
+  int32  channel               = 4;
+  double signal_to_noise_ratio = 5;
+}
+
+message GeoLocateRequest {
+  int32  home_mobile_country_code = 1;
+  int32  home_mobile_network_code = 2;
+  string radio_type               = 3;
+  string carrier                  = 4;
+  bool   consider_ip              = 5;
+  repeated CellTower       cell_towers        = 6;
+  repeated WifiAccessPoint wifi_access_points = 7;
+}
+
+enum GeoLocateResponseStatus {
+  GEOLOCATE_RESPONSE_STATUS_UNSPECIFIED    = 0;
+  GEOLOCATE_RESPONSE_STATUS_SUCCESS        = 1;
+  GEOLOCATE_RESPONSE_STATUS_BAD_REQUEST    = 2;
+  GEOLOCATE_RESPONSE_STATUS_INTERNAL_ERROR = 3;
+  GEOLOCATE_RESPONSE_STATUS_NOT_FOUND      = 4;
+}
+
+message GeoLocateResponse {
+  Location                location        = 1;
+  double                  radius_accuracy = 2;
+  GeoLocateResponseStatus status          = 3;
+}
+
+message EncryptedGeoLocateRequest {
+  humane.common.encryption.EncryptedData request = 1;
+}
+
+message EncryptedGeoLocateResponse {
+  humane.common.encryption.EncryptedData response = 1;
+}
+
+// ---- Service ----
+
+service AIBusService {
+  // Server-streaming: client sends one request, server streams responses.
+  rpc Understand (SynapseUnderstandingRequest)
+      returns (stream SynapseUnderstandingResponse);
+
+  // Unary: device sends captured image + question, server returns observation.
+  rpc AnalyzeImage (AnalyzeImageRequest)
+      returns (AnalyzeImageResponse);
+
+  // Unary: device sends encrypted location, server returns encrypted weather.
+  rpc EncryptedWeather (EncryptedWeatherRequest)
+      returns (EncryptedWeatherResponse);
+
+  // Unary: device sends cell/wifi data, server returns geolocation.
+  rpc EncryptedGeoLocate (EncryptedGeoLocateRequest)
+      returns (EncryptedGeoLocateResponse);
+
+  // Unary: device sends encrypted location + query, server returns nearby places.
+  rpc EncryptedNearbySearch (EncryptedNearbySearchRequest)
+      returns (EncryptedNearbySearchResponse);
+}

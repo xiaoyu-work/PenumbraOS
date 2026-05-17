@@ -1,0 +1,21 @@
+package com.penumbraos.hook
+
+import android.util.Log
+
+/**
+ * Hooks for the settings experience APK (package: humane.experience.settings).
+ */
+object SettingsHooks {
+
+    private const val TAG = "PenumbraHook"
+
+    fun install(cl: ClassLoader) {
+        Log.w(TAG, "Installing settings hooks...")
+
+        TcmSilencer.install(cl)
+        ConnectivityCheckBypass.install(cl)
+        EsimSettingsHooks.install(cl)
+
+        Log.w(TAG, "Settings hooks installed")
+    }
+}
